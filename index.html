@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Frame Extractor Pro</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#06b6d4',
+                            600: '#0891b2',
+                            700: '#0e7490',
+                            800: '#155e75',
+                            900: '#164e63',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- JSZip CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- FileSaver CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <!-- Custom Scrollbar & Aesthetics -->
+    <style>
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(51, 65, 85, 0.8);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(71, 85, 105, 1);
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-cyan-500 selection:text-white">
+
+    <!-- Header / Navbar -->
+    <header class="border-b border-slate-800/80 glass-panel sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                    <i class="fa-solid fa-[#film] fa-lg text-white"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">FrameExtract Studio</h1>
+                    <p class="text-xs text-slate-400">Trích xuất ảnh từ video chuyên nghiệp</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <a href="#guide-section" class="text-xs text-slate-300 hover:text-cyan-400 transition flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 hover:border-cyan-500/50">
+                    <i class="fa-regular fa-circle-question"></i> Hướng dẫn
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        <!-- Notification Banner Container -->
+        <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+        <!-- Section 1: Upload & Video Player + Settings -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+            <!-- Left Column: Upload Area & Player -->
+            <div class="lg:col-span-7 space-y-6">
+                <!-- Dropzone Area -->
+                <div id="drop-zone" class="border-2 border-dashed border-slate-700 hover:border-cyan-500 rounded-2xl p-8 text-center glass-panel transition-all duration-300 cursor-pointer relative overflow-hidden group">
+                    <input type="file" id="video-input" accept="video/*" class="hidden">
+                    <div class="space-y-4 pointer-events-none">
+                        <div class="w-16 h-16 rounded-full bg-slate-800/80 border border-slate-700 flex items-center justify-center mx-auto group-hover:scale-110 group-hover:border-cyan-500 transition-all duration-300">
+                            <i class="fa-solid fa-cloud-arrow-up text-2xl text-cyan-400"></i>
+                        </div>
+                        <div>
+                            <p class="text-base font-semibold text-slate-200">Kéo & Thả file video vào đây hoặc <span class="text-cyan-400 hover:underline">Duyệt file</span></p>
+                            <p class="text-xs text-slate-400 mt-1">Hỗ trợ các định dạng MP4, WEBM, MOV, AVI...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Video Preview Box (Hidden by default) -->
+                <div id="video-preview-wrapper" class="hidden glass-panel rounded-2xl p-4 space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <div class="flex items-center space-x-2 truncate">
+                            <i class="fa-solid fa-video text-cyan-400"></i>
+                            <span id="video-filename" class="font-medium text-sm text-slate-200 truncate max-w-xs sm:max-w-md">filename.mp4</span>
+                        </div>
+                        <button id="remove-video-btn" class="text-slate-400 hover:text-red-400 p-1.5 transition rounded-lg hover:bg-slate-800" title="Đổi video khác">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    <div class="relative bg-black rounded-xl overflow-hidden flex items-center justify-center min-h-[200px] max-h-[400px]">
+                        <video id="video-player" controls class="w-full h-full max-h-[400px] object-contain"></video>
+                    </div>
+
+                    <!-- Meta specs -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1 text-center text-xs">
+                        <div class="bg-slate-800/60 p-2.5 rounded-lg border border-slate-800">
+                            <span class="text-slate-400 block">Thời lượng</span>
+                            <span id="meta-duration" class="font-bold text-slate-200">00:00</span>
+                        </div>
+                        <div class="bg-slate-800/60 p-2.5 rounded-lg border border-slate-800">
+                            <span class="text-slate-400 block">Độ phân giải</span>
+                            <span id="meta-resolution" class="font-bold text-slate-200">0 x 0</span>
+                        </div>
+                        <div class="bg-slate-800/60 p-2.5 rounded-lg border border-slate-800">
+                            <span class="text-slate-400 block">Kích thước file</span>
+                            <span id="meta-size" class="font-bold text-slate-200">0 MB</span>
+                        </div>
+                        <div class="bg-slate-800/60 p-2.5 rounded-lg border border-slate-800">
+                            <span class="text-slate-400 block">FPS ước tính</span>
+                            <span id="meta-fps" class="font-bold text-slate-200">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Settings & Actions -->
+            <div class="lg:col-span-5 space-y-6">
+                <div class="glass-panel rounded-2xl p-6 space-y-6">
+                    <h2 class="text-base font-bold text-slate-200 flex items-center gap-2 border-b border-slate-800 pb-3">
+                        <i class="fa-solid fa-sliders text-cyan-400"></i> Cấu hình trích xuất
+                    </h2>
+
+                    <!-- Mode Select -->
+                    <div class="space-y-2">
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Chế độ cắt ảnh</label>
+                        <select id="extract-mode" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500">
+                            <option value="count">Trích xuất TỔNG SỐ frame cố định</option>
+                            <option value="fps">Trích xuất theo FPS (số frame / giây)</option>
+                            <option value="interval">Trích xuất theo KOẢNG THỜI GIAN (mỗi X giây)</option>
+                        </select>
+                    </div>
+
+                    <!-- Dynamic Input Options based on mode -->
+                    <div id="mode-options-container" class="bg-slate-900/60 border border-slate-800 rounded-xl p-4 space-y-3">
+                        <!-- Option Count -->
+                        <div id="opt-count" class="mode-option space-y-2">
+                            <div class="flex justify-between text-xs">
+                                <span class="text-slate-300">Tổng số frame mong muốn:</span>
+                                <span id="count-val-display" class="font-semibold text-cyan-400">20 frames</span>
+                            </div>
+                            <input type="range" id="input-frame-count" min="2" max="200" value="20" class="w-full accent-cyan-500 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                            <p class="text-[11px] text-slate-400">Hệ thống sẽ tự chia đều khoảng cách thời gian để lấy đủ số khung hình này.</p>
+                        </div>
+
+                        <!-- Option FPS -->
+                        <div id="opt-fps" class="mode-option hidden space-y-2">
+                            <div class="flex justify-between text-xs">
+                                <span class="text-slate-300">Tần suất Frame (FPS):</span>
+                                <span id="fps-val-display" class="font-semibold text-cyan-400">1 frame/giây</span>
+                            </div>
+                            <input type="range" id="input-fps" min="0.1" max="30" step="0.1" value="1" class="w-full accent-cyan-500 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                            <p class="text-[11px] text-slate-400">Ví dụ: Với video 10 giây, chọn 2 FPS sẽ trích xuất khoảng 20 frame ảnh.</p>
+                        </div>
+
+                        <!-- Option Interval -->
+                        <div id="opt-interval" class="mode-option hidden space-y-2">
+                            <div class="flex justify-between text-xs">
+                                <span class="text-slate-300">Khoảng thời gian (giây):</span>
+                                <span id="interval-val-display" class="font-semibold text-cyan-400">Mỗi 2.0 giây</span>
+                            </div>
+                            <input type="range" id="input-interval" min="0.1" max="60" step="0.1" value="2" class="w-full accent-cyan-500 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                            <p class="text-[11px] text-slate-400">Cứ sau khoảng thời gian này sẽ lấy 1 khung hình.</p>
+                        </div>
+                    </div>
+
+                    <!-- Format & Quality Options -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Định dạng ảnh</label>
+                            <select id="img-format" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-cyan-500">
+                                <option value="image/jpeg">JPEG (.jpg)</option>
+                                <option value="image/png">PNG (.png)</option>
+                            </select>
+                        </div>
+                        <div id="quality-box" class="space-y-1.5">
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Chất lượng (<span id="quality-val">90%</span>)</label>
+                            <input type="range" id="input-quality" min="0.1" max="1" step="0.05" value="0.9" class="w-full accent-cyan-500 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer mt-3">
+                        </div>
+                    </div>
+
+                    <!-- Resolution Options -->
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Kích thước ảnh xuất</label>
+                        <select id="img-resolution" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-cyan-500">
+                            <option value="original">Gốc (100% kích thước video)</option>
+                            <option value="0.75">75% Kích thước gốc</option>
+                            <option value="0.5">50% Kích thước gốc (Nhẹ hơn)</option>
+                            <option value="0.25">25% Kích thước gốc</option>
+                        </select>
+                    </div>
+
+                    <!-- Estimated output badge -->
+                    <div class="bg-cyan-950/40 border border-cyan-800/50 rounded-xl p-3 flex items-center justify-between text-xs">
+                        <span class="text-cyan-200/80">Dự kiến trích xuất:</span>
+                        <span id="estimated-frames-badge" class="font-bold text-cyan-400 text-sm">-- frames</span>
+                    </div>
+
+                    <!-- Start Process Button -->
+                    <button id="start-btn" disabled class="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-cyan-500/20 disabled:shadow-none transition-all duration-300 flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-bolt"></i>
+                        <span>Bắt Đầu Trích Xuất</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Processing Progress (Hidden by default) -->
+        <div id="process-section" class="hidden glass-panel rounded-2xl p-6 space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="space-y-1">
+                    <h3 class="font-bold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-gear fa-spin text-cyan-400"></i>
+                        <span>Đang xử lý trích xuất...</span>
+                    </h3>
+                    <p id="process-status-text" class="text-xs text-slate-400">Đang chuẩn bị video...</p>
+                </div>
+                <!-- Controls: Pause/Resume/Cancel -->
+                <div class="flex items-center gap-2">
+                    <button id="pause-btn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-lg border border-slate-700 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-pause"></i> <span>Tạm dừng</span>
+                    </button>
+                    <button id="cancel-btn" class="bg-red-950/50 hover:bg-red-900/60 text-red-300 text-xs px-3 py-2 rounded-lg border border-red-800/50 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-stop"></i> <span>Hủy bỏ</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="space-y-1.5">
+                <div class="w-full bg-slate-900 rounded-full h-3 overflow-hidden border border-slate-800 p-0.5">
+                    <div id="progress-bar" class="bg-gradient-to-r from-cyan-500 to-blue-500 h-full rounded-full transition-all duration-150 w-0"></div>
+                </div>
+                <div class="flex justify-between text-xs text-slate-400 font-mono">
+                    <span id="progress-percentage">0%</span>
+                    <span id="progress-count">0 / 0 frames</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Results Gallery -->
+        <div id="results-section" class="hidden glass-panel rounded-2xl p-6 space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-images text-cyan-400"></i> Kết Quả Trích Xuất
+                        <span id="total-result-badge" class="ml-2 bg-cyan-950 text-cyan-400 text-xs px-2.5 py-0.5 rounded-full border border-cyan-800">0 frames</span>
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-0.5">Bạn có thể xem phóng to hoặc tải xuống cả bộ ảnh ZIP</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button id="download-zip-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-600/20 transition flex items-center gap-2">
+                        <i class="fa-solid fa-file-zipper text-sm"></i>
+                        <span>Tải Tất Cả (ZIP)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Frame Grid Gallery -->
+            <div id="gallery-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                <!-- Frame cards injected via JS -->
+            </div>
+        </div>
+
+        <!-- Guide / FAQ Section -->
+        <div id="guide-section" class="glass-panel rounded-2xl p-6 space-y-4">
+            <h3 class="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-circle-info text-cyan-400"></i> Hướng dẫn & Lưu ý sử dụng
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-300">
+                <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-800/80 space-y-1.5">
+                    <div class="font-semibold text-cyan-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-shield-halved"></i> Bảo mật 100%
+                    </div>
+                    <p class="text-slate-400 leading-relaxed">Video của bạn hoàn toàn xử lý trực tiếp trên trình duyệt web bằng HTML5 Canvas. Không có dữ liệu nào được tải lên máy chủ ngoài.</p>
+                </div>
+                <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-800/80 space-y-1.5">
+                    <div class="font-semibold text-cyan-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-gauge-high"></i> Tối ưu tốc độ
+                    </div>
+                    <p class="text-slate-400 leading-relaxed">Nếu xử lý video dung lượng lớn hoặc thời lượng dài, hãy hạ thấp chất lượng/kích thước ảnh xuất để tiết kiệm dung lượng RAM.</p>
+                </div>
+                <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-800/80 space-y-1.5">
+                    <div class="font-semibold text-cyan-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-download"></i> Nén ZIP cực nhanh
+                    </div>
+                    <p class="text-slate-400 leading-relaxed">Tích hợp thư viện JSZip cho phép tự động đóng gói toàn bộ danh sách frame thành file ZIP duy nhất chỉ sau 1 cú nhấp chuột.</p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Lightbox Modal -->
+    <div id="lightbox-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <button id="close-lightbox" class="absolute top-5 right-5 text-slate-400 hover:text-white p-2 text-2xl transition">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <div class="max-w-4xl w-full space-y-4 text-center">
+            <img id="lightbox-img" src="" alt="Frame preview" class="max-h-[75vh] mx-auto rounded-lg shadow-2xl border border-slate-800 object-contain">
+            <div class="flex items-center justify-between max-w-md mx-auto text-xs text-slate-300 bg-slate-900/80 px-4 py-2.5 rounded-xl border border-slate-800">
+                <span id="lightbox-timestamp" class="font-mono text-cyan-400">Timestamp: 00:00:00.000</span>
+                <a id="lightbox-download-single" href="#" download="frame.jpg" class="bg-cyan-600 hover:bg-cyan-500 text-white font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+                    <i class="fa-solid fa-download"></i> Tải ảnh này
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Canvas used for video frame rendering -->
+    <canvas id="render-canvas" class="hidden"></canvas>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800/80 mt-auto py-6 text-center text-xs text-slate-500">
+        <p>© 2026 FrameExtract Studio - Trích xuất ảnh video chuyên nghiệp HTML5/JS.</p>
+    </footer>
+
+    <!-- App Logic Script -->
+    <script>
+        // DOM Elements
+        const dropZone = document.getElementById('drop-zone');
+        const videoInput = document.getElementById('video-input');
+        const videoPreviewWrapper = document.getElementById('video-preview-wrapper');
+        const videoPlayer = document.getElementById('video-player');
+        const videoFilename = document.getElementById('video-filename');
+        const removeVideoBtn = document.getElementById('remove-video-btn');
+
+        // Meta Specs
+        const metaDuration = document.getElementById('meta-duration');
+        const metaResolution = document.getElementById('meta-resolution');
+        const metaSize = document.getElementById('meta-size');
+        const metaFps = document.getElementById('meta-fps');
+
+        // Options
+        const extractMode = document.getElementById('extract-mode');
+        const optCount = document.getElementById('opt-count');
+        const optFps = document.getElementById('opt-fps');
+        const optInterval = document.getElementById('opt-interval');
+
+        const inputFrameCount = document.getElementById('input-frame-count');
+        const countValDisplay = document.getElementById('count-val-display');
+
+        const inputFps = document.getElementById('input-fps');
+        const fpsValDisplay = document.getElementById('fps-val-display');
+
+        const inputInterval = document.getElementById('input-interval');
+        const intervalValDisplay = document.getElementById('interval-val-display');
+
+        const imgFormat = document.getElementById('img-format');
+        const qualityBox = document.getElementById('quality-box');
+        const inputQuality = document.getElementById('input-quality');
+        const qualityVal = document.getElementById('quality-val');
+        const imgResolution = document.getElementById('img-resolution');
+        const estimatedFramesBadge = document.getElementById('estimated-frames-badge');
+
+        const startBtn = document.getElementById('start-btn');
+
+        // Process Section
+        const processSection = document.getElementById('process-section');
+        const processStatusText = document.getElementById('process-status-text');
+        const progressBar = document.getElementById('progress-bar');
+        const progressPercentage = document.getElementById('progress-percentage');
+        const progressCount = document.getElementById('progress-count');
+        const pauseBtn = document.getElementById('pause-btn');
+        const cancelBtn = document.getElementById('cancel-btn');
+
+        // Results
+        const resultsSection = document.getElementById('results-section');
+        const totalResultBadge = document.getElementById('total-result-badge');
+        const galleryGrid = document.getElementById('gallery-grid');
+        const downloadZipBtn = document.getElementById('download-zip-btn');
+
+        // Lightbox
+        const lightboxModal = document.getElementById('lightbox-modal');
+        const lightboxImg = document.getElementById('lightbox-img');
+        const lightboxTimestamp = document.getElementById('lightbox-timestamp');
+        const lightboxDownloadSingle = document.getElementById('lightbox-download-single');
+        const closeLightbox = document.getElementById('close-lightbox');
+
+        const renderCanvas = document.getElementById('render-canvas');
+        const ctx = renderCanvas.getContext('2d');
+
+        // State variables
+        let currentFile = null;
+        let videoDuration = 0;
+        let videoWidth = 0;
+        let videoHeight = 0;
+        let extractedFrames = []; // Stores { blob, dataUrl, timestamp, fileName }
+
+        let isProcessing = false;
+        let isPaused = false;
+        let shouldCancel = false;
+
+        // --- Toast Notification Helper ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `pointer-events-auto px-4 py-3 rounded-xl border text-xs shadow-xl flex items-center space-x-2 transition-all duration-300 opacity-0 transform translate-y-2 ${
+                type === 'error' ? 'bg-red-950/90 border-red-800 text-red-200' :
+                type === 'success' ? 'bg-emerald-950/90 border-emerald-800 text-emerald-200' :
+                'bg-slate-900/90 border-slate-700 text-slate-200'
+            }`;
+
+            const icon = type === 'error' ? 'fa-circle-exclamation' : type === 'success' ? 'fa-circle-check' : 'fa-circle-info';
+            toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            // Animate in
+            setTimeout(() => {
+                toast.classList.remove('opacity-0', 'translate-y-2');
+            }, 10);
+
+            // Animate out
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // --- Event Listeners: Drag & Drop ---
+        dropZone.addEventListener('click', () => videoInput.click());
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-cyan-500', 'bg-slate-800/40');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-cyan-500', 'bg-slate-800/40');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-cyan-500', 'bg-slate-800/40');
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                handleVideoFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        videoInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                handleVideoFile(e.target.files[0]);
+            }
+        });
+
+        removeVideoBtn.addEventListener('click', resetVideoSelection);
+
+        // --- Handle Uploaded Video ---
+        function handleVideoFile(file) {
+            if (!file.type.startsWith('video/')) {
+                showToast('Vui lòng chọn file video hợp lệ!', 'error');
+                return;
+            }
+
+            currentFile = file;
+            videoFilename.textContent = file.name;
+            metaSize.textContent = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+
+            const videoURL = URL.createObjectURL(file);
+            videoPlayer.src = videoURL;
+
+            dropZone.classList.add('hidden');
+            videoPreviewWrapper.classList.remove('hidden');
+
+            videoPlayer.onloadedmetadata = () => {
+                videoDuration = videoPlayer.duration;
+                videoWidth = videoPlayer.videoWidth;
+                videoHeight = videoPlayer.videoHeight;
+
+                metaDuration.textContent = formatTime(videoDuration);
+                metaResolution.textContent = `${videoWidth} x ${videoHeight}`;
+                metaFps.textContent = '~30 fps'; // standard estimation
+
+                startBtn.disabled = false;
+                updateEstimatedFrames();
+                showToast('Tải video thành công!', 'success');
+            };
+        }
+
+        function resetVideoSelection() {
+            currentFile = null;
+            videoPlayer.src = '';
+            videoInput.value = '';
+            videoPreviewWrapper.classList.add('hidden');
+            dropZone.classList.remove('hidden');
+            startBtn.disabled = true;
+            resultsSection.classList.add('hidden');
+            estimatedFramesBadge.textContent = '-- frames';
+        }
+
+        // --- Option Controls Updating ---
+        extractMode.addEventListener('change', () => {
+            const mode = extractMode.value;
+            optCount.classList.toggle('hidden', mode !== 'count');
+            optFps.classList.toggle('hidden', mode !== 'fps');
+            optInterval.classList.toggle('hidden', mode !== 'interval');
+            updateEstimatedFrames();
+        });
+
+        inputFrameCount.addEventListener('input', () => {
+            countValDisplay.textContent = `${inputFrameCount.value} frames`;
+            updateEstimatedFrames();
+        });
+
+        inputFps.addEventListener('input', () => {
+            fpsValDisplay.textContent = `${inputFps.value} frame/giây`;
+            updateEstimatedFrames();
+        });
+
+        inputInterval.addEventListener('input', () => {
+            intervalValDisplay.textContent = `Mỗi ${inputInterval.value} giây`;
+            updateEstimatedFrames();
+        });
+
+        imgFormat.addEventListener('change', () => {
+            qualityBox.style.opacity = imgFormat.value === 'image/png' ? '0.4' : '1';
+            inputQuality.disabled = imgFormat.value === 'image/png';
+        });
+
+        inputQuality.addEventListener('input', () => {
+            qualityVal.textContent = Math.round(inputQuality.value * 100) + '%';
+        });
+
+        function calculateTimestamps() {
+            if (!videoDuration || videoDuration <= 0) return [];
+
+            const mode = extractMode.value;
+            let timestamps = [];
+
+            if (mode === 'count') {
+                const count = parseInt(inputFrameCount.value);
+                if (count === 1) {
+                    timestamps.push(0);
+                } else {
+                    const step = videoDuration / (count - 1 || 1);
+                    for (let i = 0; i < count; i++) {
+                        timestamps.push(Math.min(i * step, videoDuration - 0.01));
+                    }
+                }
+            } else if (mode === 'fps') {
+                const fps = parseFloat(inputFps.value);
+                const step = 1 / fps;
+                for (let t = 0; t < videoDuration; t += step) {
+                    timestamps.push(t);
+                }
+            } else if (mode === 'interval') {
+                const interval = parseFloat(inputInterval.value);
+                for (let t = 0; t < videoDuration; t += interval) {
+                    timestamps.push(t);
+                }
+            }
+
+            return timestamps;
+        }
+
+        function updateEstimatedFrames() {
+            if (!videoDuration) return;
+            const timestamps = calculateTimestamps();
+            estimatedFramesBadge.textContent = `${timestamps.length} frames`;
+        }
+
+        // --- Helper: Time Formatter ---
+        function formatTime(seconds) {
+            const hrs = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            const ms = Math.floor((seconds % 1) * 1000);
+
+            const pad = (n, z = 2) => String(n).padStart(z, '0');
+
+            if (hrs > 0) {
+                return `${pad(hrs)}:${pad(mins)}:${pad(secs)}.${pad(ms, 3)}`;
+            }
+            return `${pad(mins)}:${pad(secs)}.${pad(ms, 3)}`;
+        }
+
+        // --- Core Processing Logic ---
+        startBtn.addEventListener('click', startExtraction);
+
+        async function startExtraction() {
+            if (!currentFile || !videoDuration) return;
+
+            const timestamps = calculateTimestamps();
+            if (timestamps.length === 0) {
+                showToast('Không có frame nào được xác định!', 'error');
+                return;
+            }
+
+            // UI Prep
+            isProcessing = true;
+            isPaused = false;
+            shouldCancel = false;
+            extractedFrames = [];
+
+            processSection.classList.remove('hidden');
+            resultsSection.classList.add('hidden');
+            galleryGrid.innerHTML = '';
+            startBtn.disabled = true;
+
+            pauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i> <span>Tạm dừng</span>';
+
+            // Configure Canvas Size
+            let targetWidth = videoWidth;
+            let targetHeight = videoHeight;
+            const resFactor = imgResolution.value;
+            if (resFactor !== 'original') {
+                const factor = parseFloat(resFactor);
+                targetWidth = Math.round(videoWidth * factor);
+                targetHeight = Math.round(videoHeight * factor);
+            }
+
+            renderCanvas.width = targetWidth;
+            renderCanvas.height = targetHeight;
+
+            const format = imgFormat.value;
+            const quality = parseFloat(inputQuality.value);
+            const total = timestamps.length;
+
+            showToast('Đang tiến hành trích xuất...', 'info');
+
+            // Extraction Loop
+            for (let i = 0; i < total; i++) {
+                if (shouldCancel) break;
+
+                // Handle Pause State
+                while (isPaused && !shouldCancel) {
+                    await new Promise(r => setTimeout(r, 200));
+                }
+                if (shouldCancel) break;
+
+                const time = timestamps[i];
+                processStatusText.textContent = `Đang trích xuất frame tại ${formatTime(time)}...`;
+
+                // Seek Video
+                await seekVideoToTime(videoPlayer, time);
+
+                // Draw frame to canvas
+                ctx.drawImage(videoPlayer, 0, 0, targetWidth, targetHeight);
+
+                // Export Frame Data
+                const blob = await canvasToBlob(renderCanvas, format, quality);
+                const dataUrl = renderCanvas.toDataURL(format, quality);
+                const ext = format === 'image/png' ? 'png' : 'jpg';
+                const fileName = `frame_${String(i + 1).padStart(4, '0')}_${formatTime(time).replace(/[:.]/g, '-')}.${ext}`;
+
+                extractedFrames.push({
+                    blob,
+                    dataUrl,
+                    timestamp: formatTime(time),
+                    fileName
+                });
+
+                // Update Progress UI
+                const percent = Math.round(((i + 1) / total) * 100);
+                progressBar.style.width = `${percent}%`;
+                progressPercentage.textContent = `${percent}%`;
+                progressCount.textContent = `${i + 1} / ${total} frames`;
+            }
+
+            // Cleanup & Finish
+            isProcessing = false;
+            processSection.classList.add('hidden');
+            startBtn.disabled = false;
+
+            if (shouldCancel) {
+                showToast('Đã hủy quá trình trích xuất!', 'error');
+            } else {
+                showToast(`Đã trích xuất thành công ${extractedFrames.length} frames!`, 'success');
+                displayResults();
+            }
+        }
+
+        // Promise wrapper for seeking video
+        function seekVideoToTime(video, time) {
+            return new Promise((resolve) => {
+                const onSeeked = () => {
+                    video.removeEventListener('seeked', onSeeked);
+                    resolve();
+                };
+                video.addEventListener('seeked', onSeeked);
+                video.currentTime = time;
+            });
+        }
+
+        // Canvas Blob Helper
+        function canvasToBlob(canvas, format, quality) {
+            return new Promise((resolve) => {
+                canvas.toBlob((blob) => resolve(blob), format, quality);
+            });
+        }
+
+        // Pause / Resume / Cancel Controls
+        pauseBtn.addEventListener('click', () => {
+            if (!isProcessing) return;
+            isPaused = !isPaused;
+            if (isPaused) {
+                pauseBtn.innerHTML = '<i class="fa-solid fa-play"></i> <span>Tiếp tục</span>';
+                processStatusText.textContent = 'Đã tạm dừng...';
+            } else {
+                pauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i> <span>Tạm dừng</span>';
+            }
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            if (!isProcessing) return;
+            shouldCancel = true;
+        });
+
+        // --- Render Gallery Results ---
+        function displayResults() {
+            if (extractedFrames.length === 0) return;
+
+            resultsSection.classList.remove('hidden');
+            totalResultBadge.textContent = `${extractedFrames.length} frames`;
+            galleryGrid.innerHTML = '';
+
+            extractedFrames.forEach((frame, index) => {
+                const card = document.createElement('div');
+                card.className = 'group bg-slate-900 border border-slate-800 rounded-xl overflow-hidden hover:border-cyan-500/50 transition duration-300 flex flex-col';
+
+                card.innerHTML = `
+                    <div class="relative bg-black aspect-video overflow-hidden cursor-pointer" onclick="openLightbox(${index})">
+                        <img src="${frame.dataUrl}" alt="Frame ${index + 1}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
+                            <span class="w-8 h-8 rounded-full bg-cyan-500/80 text-white flex items-center justify-center text-xs shadow-lg">
+                                <i class="fa-solid fa-magnifying-glass-plus"></i>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="p-2.5 flex items-center justify-between text-[11px] bg-slate-900/90 mt-auto border-t border-slate-800">
+                        <span class="font-mono text-slate-400 truncate" title="${frame.timestamp}">${frame.timestamp}</span>
+                        <a href="${frame.dataUrl}" download="${frame.fileName}" class="text-cyan-400 hover:text-cyan-300 p-1 rounded hover:bg-slate-800 transition" title="Tải ảnh này">
+                            <i class="fa-solid fa-download"></i>
+                        </a>
+                    </div>
+                `;
+
+                galleryGrid.appendChild(card);
+            });
+            
+            // Scroll smoothly to results
+            resultsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // --- Lightbox Functions ---
+        window.openLightbox = function(index) {
+            const frame = extractedFrames[index];
+            if (!frame) return;
+
+            lightboxImg.src = frame.dataUrl;
+            lightboxTimestamp.textContent = `Timestamp: ${frame.timestamp}`;
+            lightboxDownloadSingle.href = frame.dataUrl;
+            lightboxDownloadSingle.download = frame.fileName;
+
+            lightboxModal.classList.remove('hidden');
+        };
+
+        closeLightbox.addEventListener('click', () => {
+            lightboxModal.classList.add('hidden');
+        });
+
+        lightboxModal.addEventListener('click', (e) => {
+            if (e.target === lightboxModal) {
+                lightboxModal.classList.add('hidden');
+            }
+        });
+
+        // --- ZIP Download functionality ---
+        downloadZipBtn.addEventListener('click', async () => {
+            if (extractedFrames.length === 0) return;
+
+            const zip = new JSZip();
+            const folder = zip.folder("video_frames");
+
+            downloadZipBtn.disabled = true;
+            downloadZipBtn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-sm"></i> <span>Đang nén ZIP...</span>`;
+
+            extractedFrames.forEach((frame) => {
+                folder.file(frame.fileName, frame.blob);
+            });
+
+            try {
+                const content = await zip.generateAsync({ type: "blob" });
+                saveAs(content, `video_frames_${Date.now()}.zip`);
+                showToast('Đã xuất file ZIP thành công!', 'success');
+            } catch (err) {
+                showToast('Lỗi khi nén ZIP!', 'error');
+                console.error(err);
+            } finally {
+                downloadZipBtn.disabled = false;
+                downloadZipBtn.innerHTML = `<i class="fa-solid fa-file-zipper text-sm"></i> <span>Tải Tất Cả (ZIP)</span>`;
+            }
+        });
+    </script>
+</body>
+</html>
